@@ -5,5 +5,11 @@
         "email": "botirbek@gmail.com",
         "password": "$2b$12$egL71A5i2pz5EunmWvcabu6q4yNyWHbqGg2kA/mRb78xTiM9sXOsO",
         "role": "user"
+    },
+    {
+        "id": "f409fae4-96d7-407d-863a-ec3f3afbb489",
+        "email": "qodirberganovbotir@gmail.com",
+        "password": "$2b$12$xLcvCZ/m4OSB4lVJLC./HeTpkL8YuA3aH577H4WumEUh1oFQ/ZBlu",
+        "role": "user"
     }
 ]

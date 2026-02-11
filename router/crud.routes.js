@@ -4,7 +4,7 @@ const authorization = require("../middleware/authorization");
 
 
 const crudRouter = Router();
-crudRouter.get("/get_all_crud",getAllcruds)
+crudRouter.get("/get_all_crud",authorization,getAllcruds)
 crudRouter.post("/add_crud",authorization,addcrud)
 crudRouter.put("/update_crud/:id",authorization,updatecrud)
 crudRouter.delete("/delete_crud/:id",authorization,deletecrud)

@@ -56,7 +56,7 @@ if (decode) {
     {role:foundeduser.role , email,email:foundeduser.email , id:foundeduser.id},
     process.env.SEKRET,
     {
-      expiresIn :"1h"
+      expiresIn :"7d"
     }
   )
   res.status(200).json({

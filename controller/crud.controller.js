@@ -125,19 +125,19 @@ const chek = (req,res)=>{
  const founded = crud.find(item=>item.id===id)
 
  if(!founded){
-   return res.status(404).json({message:"not found"})
+   return res.status(404).json({message: "not found"})
  }
 
  if(founded.added_by !== req.user.id){
-   return res.status(403).json({message:"forbidden"})
+   return res.status(403).json({message: "forbidden"})
  }
 
- founded.completed = !founded.completed
+ founded.completed =  !founded.completed
 
  write_file("crud.json",crud)
 
  res.json({
-   message:"status changed",
+   message: "status changed",
    founded
  })
 }
@@ -151,12 +151,12 @@ const deleteChecked = (req,res)=>{
  write_file("crud.json", filtered)
 
  res.json({
-   message:"checked todos removed"
+   message: "checked todos removed"
  })
 }
 const getMe = (req,res)=>{
  res.json({
-   id:req.user.id,
+   id: req.user.id,
    email:req.user.email
  })
 }

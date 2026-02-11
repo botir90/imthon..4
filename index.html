@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TodoList</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+
+  </style>
+</head>
+<body>
+
+<div id="auth-overlay">
+  <div class="auth-card">
+    <h2>TODOLIST</h2>
+    <p>Kirish yoki ro'yxatdan o'ting</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Kirish</button>
+      <button class="auth-tab" onclick="switchTab('register')">Ro'yxat</button>
+    </div>
+    <div id="login-form">
+      <div class="auth-field"><label>Email</label><input id="login-email" type="email" placeholder="email@example.com" /></div>
+      <div class="auth-field"><label>Parol</label><input id="login-password" type="password" placeholder="••••••••" /></div>
+      <button class="auth-btn" onclick="doLogin()">Kirish →</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="auth-field"><label>Email</label><input id="reg-email" type="email" placeholder="email@example.com" /></div>
+      <div class="auth-field"><label>Parol</label><input id="reg-password" type="password" placeholder="••••••••" /></div>
+      <button class="auth-btn" onclick="doRegister()">Ro'yxatdan o'tish →</button>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<div class="app" id="main-app" style="display:none">
+  <div class="app-header">
+    <div class="app-header-top">
+      <div class="app-title">TODOLIST</div>
+      <button class="logout-btn" onclick="logout()">Chiqish ✕</button>
+    </div>
+    <div class="add-row">
+      <input class="add-input" id="new-task" type="text" placeholder="what needs to be done?"
+        onkeydown="if(event.key==='Enter') addTask()" />
+      <button class="add-btn" onclick="addTask()">+</button>
+    </div>
+  </div>
+  <div class="app-body">
+    <ul class="todo-list" id="todo-list">
+      <li class="loading"><div class="spinner"></div>Yuklanmoqda...</li>
+    </ul>
+  </div>
+  <div class="app-footer">
+    <div>
+      <div class="stats" id="stats-text">0 ta 0 dan bajarildi</div>
+      <div class="progress-bar" style="margin-top:8px"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+    <button class="remove-btn" onclick="removeChecked()">Remove checked ✕</button>
+  </div>
+</div>
+
+<script>
+  const BASE = 'http://localhost:3000'; // backend port 3000
+  let token = localStorage.getItem('todo_token') || '';
+  let todos = [];
+  let editingId = null;
+
+  function switchTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t,i) =>
+      t.classList.toggle('active', (tab==='login'&&i===0)||(tab==='register'&&i===1)));
+    document.getElementById('login-form').style.display = tab==='login' ? '' : 'none';
+    document.getElementById('register-form').style.display = tab==='register' ? '' : 'none';
+    document.getElementById('auth-error').textContent = '';
+  }
+
+  async function doLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-password').value;
+    if (!email || !pass) return setAuthError('Email va parol kiriting');
+    try {
+      const res = await fetch(`${BASE}/login`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({email, password:pass})
+      });
+      const data = await res.json();
+      if (!res.ok) return setAuthError(data.message || 'Xatolik');
+      token = data.token;
+      localStorage.setItem('todo_token', token);
+      startApp();
+    } catch { setAuthError('Server bilan ulanib bo\'lmadi'); }
+  }
+
+  async function doRegister() {
+    const email = document.getElementById('reg-email').value.trim();
+    const pass  = document.getElementById('reg-password').value;
+    if (!email || !pass) return setAuthError('Email va parol kiriting');
+    try {
+      const res = await fetch(`${BASE}/register`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({email, password:pass})
+      });
+      const data = await res.json();
+      if (!res.ok) return setAuthError(data.message || 'Xatolik');
+      toast('Ro\'yxat muvaffaqiyatli! Iltimos kiring.', 'success');
+      switchTab('login');
+      document.getElementById('login-email').value = email;
+    } catch { setAuthError('Server bilan ulanib bo\'lmadi'); }
+  }
+
+  function setAuthError(msg) { document.getElementById('auth-error').textContent = msg; }
+
+  function logout() {
+    token = '';
+    localStorage.removeItem('todo_token');
+    document.getElementById('main-app').style.display = 'none';
+    document.getElementById('auth-overlay').classList.remove('hidden');
+  }
+
+  function startApp() {
+    document.getElementById('auth-overlay').classList.add('hidden');
+    document.getElementById('main-app').style.display = '';
+    loadTodos();
+  }
+
+  async function loadTodos() {
+    try {
+      const res = await fetch(`${BASE}/get_all_crud`, {
+        headers:{'Authorization':`Bearer ${token}`}
+      });
+      const data = await res.json();
+      todos = Array.isArray(data) ? data : [];
+      renderTodos();
+    } catch {
+      document.getElementById('todo-list').innerHTML =
+        '<li class="empty-state"><div class="empty-icon">⚡</div><p>Server bilan ulanib bo\'lmadi.</p></li>';
+    }
+  }
+
+  async function addTask() {
+    const input = document.getElementById('new-task');
+    const title = input.value.trim();
+    if (!title) return;
+    input.value = '';
+    try {
+      const res = await fetch(`${BASE}/add_crud`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'Authorization':`Bearer ${token}`},
+        body: JSON.stringify({title, time: new Date().toISOString()})
+      });
+      if (!res.ok) { const d=await res.json(); return toast(d.message,'error'); }
+      loadTodos();
+    } catch { toast('Qo\'shishda xatolik','error'); }
+  }
+
+  async function toggleCheck(id) {
+    try {
+      await fetch(`${BASE}/${id}`, {method:'PATCH', headers:{'Authorization':`Bearer ${token}`}});
+      loadTodos();
+    } catch { toast('Xatolik','error'); }
+  }
+
+  async function deleteTask(id) {
+    try {
+      const res = await fetch(`${BASE}/delete_crud/${id}`, {
+        method:'DELETE', headers:{'Authorization':`Bearer ${token}`}
+      });
+      if (!res.ok) { const d=await res.json(); return toast(d.message,'error'); }
+      loadTodos();
+    } catch { toast('O\'chirishda xatolik','error'); }
+  }
+
+  async function saveEdit(id) {
+    const inp = document.getElementById(`edit-${id}`);
+    const title = inp ? inp.value.trim() : '';
+    if (!title) return;
+    try {
+      await fetch(`${BASE}/update_crud/${id}`, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+        body: JSON.stringify({title})
+      });
+      editingId = null;
+      loadTodos();
+    } catch { toast('Yangilashda xatolik','error'); }
+  }
+
+  async function removeChecked() {
+    try {
+      await fetch(`${BASE}/chaked`, {method:'DELETE', headers:{'Authorization':`Bearer ${token}`}});
+      loadTodos();
+    } catch { toast('Xatolik','error'); }
+  }
+
+  function renderTodos() {
+    const list = document.getElementById('todo-list');
+    if (!todos.length) {
+      list.innerHTML = '<li class="empty-state"><div class="empty-icon">✅</div><p>Hech narsa yo\'q.<br>Yangi vazifa qo\'shing!</p></li>';
+      updateStats(0, 0);
+      return;
+    }
+    const done = todos.filter(t => t.completed).length;
+    updateStats(done, todos.length);
+    list.innerHTML = todos.map(t => {
+      const isEdit = editingId === t.id;
+      const cls = t.completed ? 'todo-item completed' : 'todo-item';
+      return `
+        <li class="${cls}">
+          <button class="check-btn" onclick="toggleCheck('${t.id}')">${t.completed ? '✓' : ''}</button>
+          ${isEdit
+            ? `<input class="todo-edit-input" id="edit-${t.id}" value="${esc(t.title||t.ilm||'')}"
+                onkeydown="if(event.key==='Enter')saveEdit('${t.id}');if(event.key==='Escape'){editingId=null;renderTodos();}" />`
+            : `<span class="todo-text">${esc(t.title||t.ilm||'Nomsiz')}</span>`
+          }
+          <div class="todo-actions">
+            ${isEdit
+              ? `<button class="icon-btn save-btn" onclick="saveEdit('${t.id}')">💾</button>`
+              : `<button class="icon-btn edit-btn" onclick="editingId='${t.id}';renderTodos();setTimeout(()=>{let e=document.getElementById('edit-${t.id}');if(e){e.focus();e.select();}},50)">✏️</button>`
+            }
+            <button class="icon-btn delete-btn" onclick="deleteTask('${t.id}')">✕</button>
+          </div>
+        </li>`;
+    }).join('');
+  }
+
+  function updateStats(done, total) {
+    document.getElementById('stats-text').innerHTML =
+      `<strong>${done}</strong> ta <strong>${total}</strong> dan bajarildi`;
+    const pct = total ? Math.round(done/total*100) : 0;
+    document.getElementById('progress-fill').style.width = pct + '%';
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function toast(msg, type='') {
+    const t = document.createElement('div');
+    t.className = 'toast ' + type;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  if (token) startApp();
+</script>
+</body>
+</html>
